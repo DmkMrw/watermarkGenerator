@@ -1,10 +1,15 @@
 const Jimp = require('jimp');
 const inquirer = require('inquirer');
-const fs = require('fs')
+const fs = require('fs');
+const { brightness } = require('jimp');
 
-const addTextWatermarkToImage = async function (inputFile, outputFile, text) {
+const addTextWatermarkToImage = async function (inputFile, outputFile, text, bright, contrast, greyscale, invert) {
      try {
           const image = await Jimp.read(inputFile);
+          image.brightness(Number(bright));
+          image.contrast(Number(contrast));
+          greyscale && image.greyscale();
+          invert && image.invert();
           const font = await Jimp.loadFont(Jimp.FONT_SANS_32_BLACK);
 
           const textData = {
@@ -23,9 +28,14 @@ const addTextWatermarkToImage = async function (inputFile, outputFile, text) {
      }
 };
 
-const addImageWatermarkToImage = async function (inputFile, outputFile, watermarkFile) {
+const addImageWatermarkToImage = async function (inputFile, outputFile, watermarkFile, bright, contrast, greyscale, invert ) {
      try {
           const image = await Jimp.read(inputFile);
+          image.brightness(Number(bright));
+          image.contrast(Number(contrast));
+          greyscale && image.greyscale();
+          invert && image.invert();
+
           const watermark = await Jimp.read(watermarkFile);
           const x = image.getWidth() / 2 - watermark.getWidth() / 2;
           const y = image.getHeight() / 2 - watermark.getHeight() / 2;
@@ -66,18 +76,49 @@ const startApp = async () => {
           type: 'input',
           message: 'What file do you want to mark?',
           default: 'test.jpg',
-     }, {
+     },
+     {
           name: 'watermarkType',
           type: 'list',
           choices: ['Text watermark', 'Image watermark'],
+          },
+     {
+               name: 'editphoto',
+               type: 'confirm',
+               message: 'Do you want edit photo?',
+          },
+          {
+               name: 'brighter',
+               type: 'input',
+               message: 'How much do you want to make image brighter? (-1 to 1)',
+          },
+          {
+               name: 'contrast',
+               type: 'input',
+               message: 'How much do you want to increase contrast? (-1 to 1)',
+          },
+          {
+               name: 'greyscale',
+               type: 'confirm',
+               message: 'Do you want make image b&w?',
+          },
+          {
+               name: 'invert',
+               type: 'confirm',
+               message: 'Do you want make image invert?',
           }]);
+          let brightValue = options.brighter;
+          let contrastValue = options.contrast;
+          let greyscale = options.greyscale;
+          let invert = options.invert;
 
      if(options.watermarkType === 'Text watermark') {
           const text = await inquirer.prompt([{
                name: 'value',
                type: 'input',
                message: 'Type your watermark text:',
-          }]);
+          },
+          ]);
           options.watermarkText = text.value;
 
           let fileExists = fs.existsSync(`./img/${options.inputImage}`);
@@ -86,7 +127,7 @@ const startApp = async () => {
                process.exit();
           }
 
-          addTextWatermarkToImage('./img/' + options.inputImage, './img/' + prepareOutputFilename(options.inputImage), options.watermarkText);
+          addTextWatermarkToImage('./img/' + options.inputImage, './img/' + prepareOutputFilename(options.inputImage), options.watermarkText, brightValue, contrastValue, greyscale, invert);
      }
      else {
           const image = await inquirer.prompt([{
@@ -94,8 +135,10 @@ const startApp = async () => {
                type: 'input',
                message: 'Type your watermark name:',
                default: 'logo.png',
-     }]);
+          }]);
+
           options.watermarkImage = image.filename;
+
           let fileImageExists = fs.existsSync(`./img/${options.inputImage}`);
           let watermarkImageExists = fs.existsSync(`./img/${options.watermarkImage}`);
           if (!fileImageExists || !watermarkImageExists) {
@@ -103,7 +146,7 @@ const startApp = async () => {
                process.exit();
           }
 
-     addImageWatermarkToImage('./img/' + options.inputImage, './img/' + prepareOutputFilename(options.inputImage), './img/' + options.watermarkImage);
+     addImageWatermarkToImage('./img/' + options.inputImage, './img/' + prepareOutputFilename(options.inputImage), './img/' + options.watermarkImage, brightValue, contrastValue, greyscale, invert);
      }
 
 }
